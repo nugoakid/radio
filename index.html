@@ -11,49 +11,33 @@
     <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%231c1c1e'/><text y='50%' x='50%' dominant-baseline='middle' text-anchor='middle' font-size='50'>📻</text></svg>">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='50%' x='50%' dominant-baseline='middle' text-anchor='middle' font-size='50'>📻</text></svg>">
 
-    <title>iPad Radio</title>
+    <title>Radio PWA</title>
 
     <style>
-        /* RESET & BASICS */
-        * {
-            box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
-        }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
         :root {
             --ios-blur: 25px;
-            --ios-bg: rgba(30, 30, 30, 0.65); /* Slightly more transparent for better glass effect */
-            --accent-color: #0A84FF; /* iOS Dark Mode Blue */
+            --ios-bg: rgba(30, 30, 30, 0.65);
+            --accent-color: #0A84FF;
+            --stop-color: #FF453A;
             --text-primary: #ffffff;
             --text-secondary: #8e8e93;
         }
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            /* Force full height and fix mobile scroll bounce */
-            min-height: 100vh;
-            height: 100%; 
-            background-color: #000000;
+            margin: 0; padding: 0;
+            min-height: 100vh; height: 100%; 
             background: linear-gradient(160deg, #1c1c1e 0%, #000000 100%);
             color: var(--text-primary);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden; /* Prevent scrolling the whole page */
-            /* Safe area padding for notch/home bar */
-            padding-top: env(safe-area-inset-top);
-            padding-bottom: env(safe-area-inset-bottom);
-            padding-left: env(safe-area-inset-left);
-            padding-right: env(safe-area-inset-right);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            overflow: hidden;
+            padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
         }
 
-        /* MAIN GLASS CARD */
         .player-container {
-            width: 90%;
-            max-width: 500px; /* Constrain width on Desktop */
+            width: 90%; max-width: 500px;
             background: var(--ios-bg);
             backdrop-filter: blur(var(--ios-blur));
             -webkit-backdrop-filter: blur(var(--ios-blur));
@@ -62,212 +46,145 @@
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
             text-align: center;
             border: 1px solid rgba(255, 255, 255, 0.12);
-            transition: transform 0.3s ease;
         }
 
-        h1 {
-            font-weight: 700;
-            margin: 0 0 10px 0;
-            font-size: 1.8rem;
-            letter-spacing: -0.5px;
-        }
+        h1 { margin: 0 0 10px 0; font-size: 1.8rem; letter-spacing: -0.5px; }
 
         #status-text {
-            color: var(--text-secondary);
-            font-size: 1rem;
-            margin-bottom: 35px;
-            height: 24px;
-            font-weight: 500;
+            color: var(--text-secondary); font-size: 1rem; margin-bottom: 35px; height: 24px; font-weight: 500;
         }
 
-        /* BUTTONS GRID */
+        /* GRID */
         .station-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 12px;
-            margin-bottom: 40px;
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 30px;
         }
 
         .station-btn {
-            background: rgba(120, 120, 128, 0.18); /* iOS translucent gray */
-            border: none;
-            color: white;
-            padding: 18px 5px;
-            border-radius: 18px;
-            font-size: 0.95rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s cubic-bezier(0.25, 1, 0.5, 1);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            width: 100%;
-        }
-
-        .station-btn:active {
-            transform: scale(0.94);
-            background: rgba(120, 120, 128, 0.3);
-        }
-
-        /* Active State (When playing) */
-        .station-btn.active {
-            background: var(--accent-color);
-            color: white;
-            box-shadow: 0 4px 20px rgba(10, 132, 255, 0.4);
-        }
-
-        .icon { font-size: 1.8rem; margin-bottom: 4px; }
-
-        /* VOLUME SLIDER */
-        .volume-container {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            background: rgba(120, 120, 128, 0.12);
-            padding: 15px 20px;
-            border-radius: 20px;
-            margin-bottom: 25px;
-        }
-
-        .vol-icon { font-size: 1.2rem; opacity: 0.7; }
-
-        input[type=range] {
-            -webkit-appearance: none; /* Override default look */
-            width: 100%;
-            margin: 0 15px;
-            background: transparent;
-        }
-
-        /* Track */
-        input[type=range]::-webkit-slider-runnable-track {
-            width: 100%;
-            height: 6px;
-            cursor: pointer;
-            background: rgba(255,255,255,0.2);
-            border-radius: 3px;
-        }
-
-        /* Thumb (The round circle) */
-        input[type=range]::-webkit-slider-thumb {
-            height: 24px;
-            width: 24px;
-            border-radius: 50%;
-            background: #ffffff;
-            cursor: pointer;
-            -webkit-appearance: none;
-            margin-top: -9px; /* Centers thumb on track */
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-        }
-
-        /* STOP BUTTON */
-        #stop-btn {
-            background: rgba(255, 69, 58, 0.15);
-            color: #ff453a; /* iOS Red */
-            border: 1px solid rgba(255, 69, 58, 0.3);
-            padding: 14px 40px;
-            border-radius: 25px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            display: none; /* Hidden until playing */
+            background: rgba(120, 120, 128, 0.18);
+            border: none; color: white; padding: 20px 5px; border-radius: 18px;
+            font-size: 0.95rem; font-weight: 600; cursor: pointer;
             transition: all 0.2s ease;
+            display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; width: 100%;
         }
 
-        #stop-btn:active {
-            background: rgba(255, 69, 58, 0.3);
-            transform: scale(0.96);
+        .station-btn:active { transform: scale(0.94); background: rgba(120, 120, 128, 0.3); }
+
+        /* PLAYING STATE (Blue) */
+        .station-btn.playing {
+            background: var(--accent-color);
+            box-shadow: 0 4px 20px rgba(10, 132, 255, 0.4);
+            animation: pulse 2s infinite;
         }
 
+        .icon { font-size: 1.8rem; }
+
+        /* VOLUME */
+        .volume-container {
+            display: flex; align-items: center; justify-content: space-between;
+            background: rgba(120, 120, 128, 0.12);
+            padding: 15px 20px; border-radius: 20px; margin-top: 10px;
+        }
+        
+        input[type=range] { -webkit-appearance: none; width: 100%; margin: 0 15px; background: transparent; }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 6px; background: rgba(255,255,255,0.2); border-radius: 3px; }
+        input[type=range]::-webkit-slider-thumb { height: 24px; width: 24px; border-radius: 50%; background: #fff; -webkit-appearance: none; margin-top: -9px; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
+
+        /* IPHONE FIX: Hide volume on small screens (Phone portrait) */
+        @media only screen and (max-width: 600px) {
+            .volume-container { display: none; }
+            #status-text::after { content: "\A(Use side buttons for volume)"; white-space: pre; font-size: 0.8rem; opacity: 0.6; }
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(10, 132, 255, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(10, 132, 255, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(10, 132, 255, 0); }
+        }
     </style>
 </head>
 <body>
 
     <div class="player-container">
         <h1>Radio</h1>
-        <div id="status-text">Ready to play</div>
+        <div id="status-text">Tap to play</div>
 
         <div class="station-grid">
-            <button class="station-btn" onclick="playRadio('https://stream.live.vc.bbcmedia.co.uk/bbc_radio_one', this, 'BBC R1')">
+            <button class="station-btn" onclick="toggleRadio('https://stream.live.vc.bbcmedia.co.uk/bbc_radio_one', this, 'BBC R1')">
                 <span class="icon">🦄</span>
                 <span>Pop</span>
             </button>
-            <button class="station-btn" onclick="playRadio('https://media-ssl.musicradio.com/Capital', this, 'Capital')">
+            <button class="station-btn" onclick="toggleRadio('https://media-ssl.musicradio.com/Capital', this, 'Capital')">
                 <span class="icon">🔥</span>
                 <span>Hits</span>
             </button>
-            <button class="station-btn" onclick="playRadio('https://stream.live.vc.bbcmedia.co.uk/bbc_radio_two', this, 'BBC R2')">
+            <button class="station-btn" onclick="toggleRadio('https://stream.live.vc.bbcmedia.co.uk/bbc_radio_two', this, 'BBC R2')">
                 <span class="icon">☕️</span>
                 <span>Classic</span>
             </button>
         </div>
 
         <div class="volume-container">
-            <span class="vol-icon">🔈</span>
+            <span>🔈</span>
             <input type="range" id="volume-slider" min="0" max="1" step="0.01" value="0.8">
-            <span class="vol-icon">🔊</span>
+            <span>🔊</span>
         </div>
-
-        <button id="stop-btn" onclick="stopRadio()">Stop</button>
     </div>
 
     <script>
         const audioPlayer = new Audio();
-        // Enable iOS Audio Context on first interaction
-        audioPlayer.preload = "none"; 
+        let currentBtn = null; // Track which button is active
 
         const statusText = document.getElementById('status-text');
-        const stopBtn = document.getElementById('stop-btn');
         const volumeSlider = document.getElementById('volume-slider');
         const buttons = document.querySelectorAll('.station-btn');
 
-        // Volume logic
+        // Volume logic (Works on Mac/iPad, hidden on iPhone)
         volumeSlider.addEventListener('input', (e) => {
             audioPlayer.volume = e.target.value;
         });
 
-        // Main Play Function
-        function playRadio(url, btnElement, name) {
-            // Visual reset
-            buttons.forEach(b => b.classList.remove('active'));
-            
-            // Interaction feedback
-            statusText.innerText = `Connecting to ${name}...`;
-            
-            // Audio setup
-            if (!audioPlayer.paused) {
-                audioPlayer.pause();
+        function toggleRadio(url, btnElement, name) {
+            // Check if we are clicking the SAME button that is currently playing
+            if (currentBtn === btnElement && !audioPlayer.paused) {
+                stopAll();
+                return;
             }
+
+            // If we are clicking a NEW button, stop the old one first
+            stopAll();
+
+            // Start the new one
+            playStream(url, btnElement, name);
+        }
+
+        function playStream(url, btnElement, name) {
+            statusText.innerText = `Loading ${name}...`;
+            
             audioPlayer.src = url;
             audioPlayer.volume = volumeSlider.value;
-
-            // Attempt Play
+            
             const playPromise = audioPlayer.play();
 
             if (playPromise !== undefined) {
                 playPromise.then(_ => {
-                    // Play started successfully
+                    // Success
                     statusText.innerText = `Playing: ${name}`;
-                    btnElement.classList.add('active');
-                    stopBtn.style.display = 'inline-block';
+                    btnElement.classList.add('playing');
+                    currentBtn = btnElement; // Set this as the active button
                 })
                 .catch(error => {
-                    // Auto-play was prevented or stream failed
                     console.error("Playback error:", error);
-                    statusText.innerText = "Error: Stream unavailable";
+                    statusText.innerText = "Stream unavailable";
                 });
             }
         }
 
-        // Stop Function
-        function stopRadio() {
+        function stopAll() {
             audioPlayer.pause();
-            audioPlayer.removeAttribute('src'); // Detach stream
-            
-            buttons.forEach(b => b.classList.remove('active'));
+            audioPlayer.removeAttribute('src'); // Fully detach stream
+            buttons.forEach(b => b.classList.remove('playing'));
             statusText.innerText = "Stopped";
-            stopBtn.style.display = 'none';
+            currentBtn = null;
         }
     </script>
 </body>
