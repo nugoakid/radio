@@ -173,5 +173,36 @@
             currentBtn = null;
         }
     </script>
+    <script>
+        const appVersion = "1.0"; // MUST MATCH version.json initially
+
+        // Check for updates every 60 seconds
+        setInterval(() => {
+            checkForUpdate();
+        }, 60000);
+
+        // Also check immediately when the user opens the app
+        document.addEventListener("visibilitychange", () => {
+            if (document.visibilityState === 'visible') {
+                checkForUpdate();
+            }
+        });
+
+        async function checkForUpdate() {
+            try {
+                // We add '?t=' + Date.now() to ensure we don't get a cached version of the JSON file
+                const response = await fetch('version.json?t=' + Date.now());
+                const data = await response.json();
+                
+                if (data.version !== appVersion) {
+                    console.log("New version found! Reloading...");
+                    // Optional: You could ask the user first, but auto-reloading is smoother for this app
+                    window.location.reload(true);
+                }
+            } catch (error) {
+                console.log("Update check failed (offline?)", error);
+            }
+        }
+    </script>
 </body>
 </html>
