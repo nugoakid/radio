@@ -129,59 +129,17 @@
         </div>
     </div>
 
+
     <script>
-        const audioPlayer = new Audio();
-        let currentBtn = null; 
-
-        const statusText = document.getElementById('status-text');
-        const volumeSlider = document.getElementById('volume-slider');
-        const buttons = document.querySelectorAll('.station-btn');
-
-        volumeSlider.addEventListener('input', (e) => {
-            audioPlayer.volume = e.target.value;
-        });
-
-        function toggleRadio(url, btnElement, name) {
-            if (currentBtn === btnElement && !audioPlayer.paused) {
-                stopAll();
-                return;
-            }
-            stopAll();
-            playStream(url, btnElement, name);
-        }
-
-        function playStream(url, btnElement, name) {
-            statusText.innerText = `Connecting...`;
-            audioPlayer.src = url;
-            audioPlayer.volume = volumeSlider.value;
-            
-            audioPlayer.play().then(() => {
-                statusText.innerText = `Playing: ${name}`;
-                btnElement.classList.add('playing');
-                currentBtn = btnElement;
-            }).catch(e => {
-                console.error(e);
-                statusText.innerText = "Stream unavailable";
-            });
-        }
-
-        function stopAll() {
-            audioPlayer.pause();
-            audioPlayer.removeAttribute('src'); 
-            buttons.forEach(b => b.classList.remove('playing'));
-            statusText.innerText = "Stopped";
-            currentBtn = null;
-        }
-    </script>
-    <script>
-        const appVersion = "1.0"; // MUST MATCH version.json initially
+        // ==========================================
+        // PART 1: AUTO-UPDATE SYSTEM
+        // ==========================================
+        const appVersion = "1.0"; // UPDATE THIS when you change version.json
 
         // Check for updates every 60 seconds
-        setInterval(() => {
-            checkForUpdate();
-        }, 60000);
+        setInterval(checkForUpdate, 60000);
 
-        // Also check immediately when the user opens the app
+        // Also check when app comes back to foreground
         document.addEventListener("visibilitychange", () => {
             if (document.visibilityState === 'visible') {
                 checkForUpdate();
@@ -190,19 +148,155 @@
 
         async function checkForUpdate() {
             try {
-                // We add '?t=' + Date.now() to ensure we don't get a cached version of the JSON file
+                // Add timestamp to prevent caching the JSON file
                 const response = await fetch('version.json?t=' + Date.now());
+                if (!response.ok) return; // Skip if file missing
+                
                 const data = await response.json();
                 
-                if (data.version !== appVersion) {
+                if (data.version && data.version !== appVersion) {
                     console.log("New version found! Reloading...");
-                    // Optional: You could ask the user first, but auto-reloading is smoother for this app
-                    window.location.reload(true);
+                    // Only reload if we aren't currently listening to music (to avoid interruption)
+                    if (window.audioPlayer.paused) {
+                        window.location.reload(true);
+                    } else {
+                        // Optional: Wait until they stop, then reload
+                        console.log("Update pending (waiting for stop)");
+                    }
                 }
             } catch (error) {
-                console.log("Update check failed (offline?)", error);
+                console.log("Update check failed", error);
+            }
+        }
+
+        // ==========================================
+        // PART 2: ROBUST AUDIO PLAYER
+        // ==========================================
+        
+        // 1. Create Global Player
+        window.audioPlayer = new Audio();
+        window.audioPlayer.preload = "auto";
+        
+        // 2. State Tracking
+        let isPlaying = false;      // Do we WANT to be playing?
+        let currentBtn = null;      // Which button is active?
+        let retryCount = 0;         // Prevent infinite loops
+
+        // 3. UI Elements
+        const statusText = document.getElementById('status-text');
+        const volumeSlider = document.getElementById('volume-slider');
+        const buttons = document.querySelectorAll('.station-btn');
+
+        // --- EVENT LISTENERS FOR STABILITY ---
+
+        // If stream ends unexpectedly (network drop), restart it
+        window.audioPlayer.addEventListener('ended', () => {
+            if (isPlaying) {
+                console.log("Stream dropped. Reconnecting...");
+                statusText.innerText = "Reconnecting...";
+                setTimeout(() => window.audioPlayer.play(), 1000);
+            }
+        });
+
+        // If stream pauses (buffer empty), try to resume
+        window.audioPlayer.addEventListener('pause', () => {
+            if (isPlaying && !window.audioPlayer.ended) {
+                setTimeout(() => {
+                    if (isPlaying) window.audioPlayer.play();
+                }, 500);
+            }
+        });
+
+        // Handle Errors (404, Offline, etc)
+        window.audioPlayer.addEventListener('error', (e) => {
+            if (isPlaying && retryCount < 5) {
+                console.log("Error detected. Retrying...");
+                retryCount++;
+                statusText.innerText = `Retrying (${retryCount})...`;
+                
+                // Reload the source URL to refresh connection
+                const currentUrl = window.audioPlayer.src;
+                window.audioPlayer.src = "";
+                window.audioPlayer.src = currentUrl;
+                window.audioPlayer.play();
+            } else if (retryCount >= 5) {
+                statusText.innerText = "Connection Failed. Try again.";
+                stopAll();
+            }
+        });
+
+        // Reset retry count on successful play
+        window.audioPlayer.addEventListener('playing', () => {
+            retryCount = 0;
+            const stationName = currentBtn ? currentBtn.innerText.replace(/\n/g, ' ') : 'Radio';
+            statusText.innerText = `Playing: ${stationName}`;
+        });
+
+        // --- MAIN CONTROLS ---
+
+        volumeSlider.addEventListener('input', (e) => {
+            window.audioPlayer.volume = e.target.value;
+        });
+
+        function toggleRadio(url, btnElement, name) {
+            if (currentBtn === btnElement && isPlaying) {
+                stopAll();
+            } else {
+                playStream(url, btnElement, name);
+            }
+        }
+
+        async function playStream(url, btnElement, name) {
+            // Reset
+            stopAll(false); 
+            
+            isPlaying = true;
+            currentBtn = btnElement;
+            
+            // UI
+            buttons.forEach(b => b.classList.remove('playing'));
+            btnElement.classList.add('playing');
+            statusText.innerText = `Connecting...`;
+
+            // Audio
+            window.audioPlayer.src = url;
+            window.audioPlayer.volume = volumeSlider.value;
+            
+            try {
+                await window.audioPlayer.play();
+                setupMediaSession(name); 
+            } catch (error) {
+                console.error("Play failed:", error);
+                statusText.innerText = "Tap to Retry";
+                isPlaying = false;
+            }
+        }
+
+        function stopAll(updateUI = true) {
+            isPlaying = false;
+            window.audioPlayer.pause();
+            
+            if (updateUI) {
+                window.audioPlayer.removeAttribute('src'); 
+                buttons.forEach(b => b.classList.remove('playing'));
+                statusText.innerText = "Stopped";
+                currentBtn = null;
+            }
+        }
+
+        // --- LOCK SCREEN METADATA ---
+        function setupMediaSession(name) {
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.metadata = new MediaMetadata({
+                    title: name,
+                    artist: "Live Radio",
+                    artwork: [{ src: 'https://img.icons8.com/dusk/512/radio-tower.png', sizes: '512x512', type: 'image/png' }]
+                });
+                navigator.mediaSession.setActionHandler('play', () => { isPlaying = true; window.audioPlayer.play(); });
+                navigator.mediaSession.setActionHandler('pause', () => stopAll());
             }
         }
     </script>
+    
 </body>
 </html>
