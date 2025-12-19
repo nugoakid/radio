@@ -186,6 +186,8 @@
 </head>
 <body>
 
+    <audio id="ios-audio-player" preload="none"></audio>
+
     <div id="clock-wrapper">
         <div id="date-display">...</div>
         <div id="time-display">...</div>
@@ -241,19 +243,8 @@
 
             const clockUpdater = () => {
                 const now = new Date();
-                
-                const dateString = new Intl.DateTimeFormat('hu-HU', {
-                    month: 'long',
-                    day: 'numeric',
-                    weekday: 'long'
-                }).format(now);
-
-                const timeString = new Intl.DateTimeFormat('hu-HU', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    hour12: false
-                }).format(now);
-
+                const dateString = new Intl.DateTimeFormat('hu-HU', { month: 'long', day: 'numeric', weekday: 'long' }).format(now);
+                const timeString = new Intl.DateTimeFormat('hu-HU', { hour: '2-digit', minute: '2-digit', hour12: false }).format(now);
                 if(dateDisplay) dateDisplay.textContent = dateString;
                 if(timeDisplay) timeDisplay.textContent = timeString;
             };
@@ -261,11 +252,12 @@
             clockUpdater();
             setInterval(clockUpdater, 1000);
 
-
-            // --- 2. RÁDIÓ LOGIKA (Visszaállítva a klasszikus, stabil verzióra) ---
+            // --- 2. IPAD OPTIMALIZÁLT AUDIO ---
             
             const YOUTUBE_ID = "YXAxiXEZM8Q"; 
-            const audioPlayer = new Audio(); // Nincs extra preload paraméter
+            
+            // Itt a trükk: Nem JS-ben hozzuk létre, hanem a HTML elemet használjuk
+            const audioPlayer = document.getElementById('ios-audio-player');
             
             let isPlaying = false;      
             let currentBtn = null;
@@ -277,13 +269,14 @@
             const videoCover = document.getElementById('video-cover');
             const buttons = document.querySelectorAll('.station-btn');
 
-            // Globális UI reset
             const stopAll = (updateUI = true) => {
                 isPlaying = false;
                 audioPlayer.pause();
+                // Fontos iOS-nek: ürítjük a puffert
+                audioPlayer.src = ""; 
+                audioPlayer.load();
                 
                 if (updateUI) {
-                    audioPlayer.removeAttribute('src'); 
                     buttons.forEach(b => b.classList.remove('playing'));
                     statusText.innerText = "Stopped";
                     currentBtn = null;
@@ -294,45 +287,46 @@
                 if ('mediaSession' in navigator) {
                     try {
                         navigator.mediaSession.metadata = new MediaMetadata({
-                            title: name,
-                            artist: "Live Radio",
+                            title: name, artist: "Live Radio",
                             artwork: [{ src: 'https://img.icons8.com/dusk/512/radio-tower.png', sizes: '512x512', type: 'image/png' }]
                         });
                         navigator.mediaSession.setActionHandler('play', () => { isPlaying = true; audioPlayer.play(); });
                         navigator.mediaSession.setActionHandler('pause', () => stopAll());
-                    } catch(e) { console.log("MediaSession error", e); }
+                    } catch(e) {}
                 }
             };
 
-            // Globális függvények (hogy az onclick lássa)
             window.toggleRadio = (url, btnElement, name) => {
-                // Ha ugyanaz szól, állítsd meg
                 if (currentBtn === btnElement && !audioPlayer.paused) {
                     stopAll();
                     return;
                 }
 
-                // Minden más esetben: Indítsd el (vagy válts)
-                stopAll(false); // UI reset nélkül állítjuk meg az előzőt
+                // Hard Reset az iOS puffernek
+                audioPlayer.pause();
+                audioPlayer.src = "";
+                audioPlayer.load(); // Ez dobja el a beragadt puffert
                 
                 isPlaying = true;
                 currentBtn = btnElement;
                 
                 buttons.forEach(b => b.classList.remove('playing'));
                 btnElement.classList.add('playing');
-                statusText.innerText = `Playing: ${name}`;
+                statusText.innerText = `Connecting...`;
 
-                audioPlayer.src = url;
-                audioPlayer.volume = volumeSlider.value;
-                
-                // Egyszerű Play, mindenféle extra hókuszpókusz nélkül
-                audioPlayer.play().then(() => {
-                     setupMediaSession(name);
-                }).catch(e => {
-                    console.error("Play error:", e);
-                    statusText.innerText = "Error (Tap again)";
-                    stopAll();
-                });
+                // Kis késleltetés, hogy a load() biztosan lefusson
+                setTimeout(() => {
+                    audioPlayer.src = url;
+                    audioPlayer.volume = volumeSlider.value;
+                    audioPlayer.play().then(() => {
+                        statusText.innerText = `Playing: ${name}`;
+                        setupMediaSession(name);
+                    }).catch(e => {
+                        console.error(e);
+                        statusText.innerText = "Error (Tap again)";
+                        stopAll();
+                    });
+                }, 50);
             };
 
             window.openVideo = () => {
@@ -346,12 +340,7 @@
             window.playVideoWithSound = () => {
                 videoCover.style.display = 'none';
                 statusText.innerText = "Watching TV...";
-                ytContainer.innerHTML = `<iframe 
-                    src="https://www.youtube.com/embed/${YOUTUBE_ID}?autoplay=1&playsinline=1" 
-                    title="YouTube video player" 
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                    allowfullscreen>
-                </iframe>`;
+                ytContainer.innerHTML = `<iframe src="https://www.youtube.com/embed/${YOUTUBE_ID}?autoplay=1&playsinline=1" title="YouTube video player" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
             };
 
             window.closeVideo = () => {
@@ -363,7 +352,6 @@
             volumeSlider.addEventListener('input', (e) => {
                 audioPlayer.volume = e.target.value;
             });
-            
         });
     </script>
 </body>
