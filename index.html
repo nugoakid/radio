@@ -15,6 +15,7 @@
     <title>iPad Radio</title>
 
     <style>
+        /* --- ALAPOK --- */
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
         :root {
@@ -26,53 +27,53 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", Roboto, Helvetica, Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             margin: 0; padding: 0;
-            height: 100vh;  
-            height: 100dvh; 
+            height: 100vh;
+            height: 100dvh; /* Dynamic viewport height a modern böngészőknek */
             width: 100vw;
             background: linear-gradient(160deg, #1c1c1e 0%, #000000 100%);
             color: var(--text-primary);
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            justify-content: center;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
             overflow: hidden;
             position: relative;
         }
 
-        /* --- ÓRA STÍLUS (JAVÍTOTT) --- */
+        /* --- DÁTUM ÉS IDŐ (Felső sáv) --- */
         #clock-wrapper {
             position: absolute;
-            top: 20px; /* Fix távolság a tetejétől, hogy biztosan látsszon */
+            top: 60px; /* Hagyunk helyet a status barnak */
             left: 0;
             width: 100%;
             text-align: center;
-            z-index: 1; /* Alacsony rétegrend */
-            pointer-events: none; /* Átkattintható legyen, ne takarja ki a gombokat */
-            padding: 10px;
+            z-index: 10; /* A háttér felett, de... */
+            pointer-events: none; /* ...átkattintható legyen! FONTOS */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
         }
 
         #date-display {
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             color: var(--text-secondary);
             font-weight: 500;
             text-transform: capitalize;
-            margin-bottom: 5px;
+            margin-bottom: 4px;
             letter-spacing: 0.5px;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.5); /* Jobb olvashatóság */
+            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
         }
 
         #time-display {
-            font-size: 4rem;
-            font-weight: 200;
+            font-size: 4.5rem;
+            font-weight: 200; /* Apple stílusú vékony betű */
             color: var(--text-primary);
-            letter-spacing: -1px;
             line-height: 1;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            text-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            font-variant-numeric: tabular-nums; /* Hogy ne ugráljon a szélesség */
         }
 
-        /* --- LEJÁTSZÓ KONTÉNER --- */
+        /* --- LEJÁTSZÓ DOBOZ --- */
         .player-container {
             width: 90%; max-width: 500px;
             background: var(--ios-bg);
@@ -84,7 +85,8 @@
             text-align: center;
             border: 1px solid rgba(255, 255, 255, 0.1);
             position: relative;
-            z-index: 100; /* Magas rétegrend, hogy a gombok működjenek! */
+            z-index: 20; /* Magasabb, mint az óra */
+            margin-top: 100px; /* Helyet hagyunk az órának */
         }
 
         h1 { margin: 0 0 10px 0; font-size: 2rem; letter-spacing: -0.5px; }
@@ -93,7 +95,7 @@
             color: var(--text-secondary); font-size: 1rem; margin-bottom: 35px; height: 24px; font-weight: 500;
         }
 
-        /* STATION GRID */
+        /* --- GOMBOK --- */
         .station-grid {
             display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 30px;
         }
@@ -104,7 +106,7 @@
             font-size: 0.9rem; font-weight: 600; cursor: pointer;
             transition: all 0.2s cubic-bezier(0.25, 1, 0.5, 1);
             display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; width: 100%;
-            z-index: 101; /* Biztos ami biztos */
+            -webkit-appearance: none; /* iOS gomb reset */
         }
 
         .station-btn:active { transform: scale(0.92); background: rgba(255, 255, 255, 0.15); }
@@ -115,8 +117,7 @@
         }
         
         .video-btn {
-            background: rgba(255, 59, 48, 0.15); 
-            color: #ff453a;
+            background: rgba(255, 59, 48, 0.15); color: #ff453a;
         }
         .video-btn:active { background: rgba(255, 59, 48, 0.3); }
 
@@ -132,85 +133,53 @@
         input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 6px; background: rgba(255,255,255,0.2); border-radius: 3px; }
         input[type=range]::-webkit-slider-thumb { height: 26px; width: 26px; border-radius: 50%; background: #fff; -webkit-appearance: none; margin-top: -10px; box-shadow: 0 2px 6px rgba(0,0,0,0.4); }
 
+        /* Mobil nézet finomhangolás */
         @media only screen and (max-width: 600px) {
             .volume-container { display: none; }
             #status-text::after { content: "\A(Use side buttons for volume)"; white-space: pre; font-size: 0.8rem; opacity: 0.6; }
-            .player-container { margin-top: 60px; /* Helyet hagyunk az órának mobilon */ }
-            #time-display { font-size: 3rem; }
+            .player-container { padding: 30px 20px; margin-top: 60px; }
+            #time-display { font-size: 3.5rem; }
             #date-display { font-size: 1rem; }
+            #clock-wrapper { top: 40px; }
         }
         
         /* --- VIDEO MODAL --- */
         #video-modal {
-            display: none; 
-            position: fixed;
-            top: 0; left: 0; width: 100vw; height: 100vh;
-            background: rgba(0, 0, 0, 0.95);
-            z-index: 999;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.95); z-index: 1000;
+            flex-direction: column; align-items: center; justify-content: center;
             backdrop-filter: blur(10px);
         }
         
         .video-box {
-            width: 95%;
-            max-width: 1000px;
-            position: relative;
-            padding-bottom: 53.4%; 
-            height: 0; 
-            background: black;
-            border-radius: 16px;
-            overflow: hidden;
+            width: 95%; max-width: 1000px; position: relative;
+            padding-bottom: 56.25%; /* 16:9 */ height: 0; 
+            background: black; border-radius: 16px; overflow: hidden;
             box-shadow: 0 0 50px rgba(255, 0, 0, 0.2);
         }
         
-        .video-box iframe {
-            position: absolute;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            border: none;
-            z-index: 1; 
-        }
+        .video-box iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; z-index: 1; }
         
         #video-cover {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: black;
-            display: flex; flex-direction: column;
-            align-items: center; justify-content: center;
-            z-index: 10; 
-            cursor: pointer;
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: black; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; z-index: 10; cursor: pointer;
         }
         
         .huge-play-btn {
-            font-size: 80px;
-            color: #ff0000;
-            background: white;
-            width: 100px; height: 100px;
-            border-radius: 50%;
+            font-size: 80px; color: #ff0000; background: white;
+            width: 100px; height: 100px; border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
-            padding-left: 10px; 
-            box-shadow: 0 0 30px rgba(255,0,0,0.5);
+            padding-left: 10px; box-shadow: 0 0 30px rgba(255,0,0,0.5);
             transition: transform 0.2s;
         }
-        
         #video-cover:active .huge-play-btn { transform: scale(0.9); }
         
-        .tap-text {
-            color: white; font-weight: bold; margin-top: 15px; font-size: 1.2rem;
-            text-transform: uppercase; letter-spacing: 1px;
-        }
+        .tap-text { color: white; font-weight: bold; margin-top: 15px; font-size: 1.2rem; text-transform: uppercase; letter-spacing: 1px; }
         
         #close-video-btn {
-            margin-top: 30px;
-            background: #333;
-            color: white;
-            border: 1px solid #555;
-            padding: 15px 40px;
-            border-radius: 30px;
-            font-size: 1.1rem;
-            cursor: pointer;
+            margin-top: 30px; background: #333; color: white; border: 1px solid #555;
+            padding: 15px 40px; border-radius: 30px; font-size: 1.1rem; cursor: pointer;
         }
     </style>
 </head>
@@ -226,19 +195,19 @@
         <div id="status-text">Tap to play</div>
 
         <div class="station-grid">
-            <button class="station-btn" onclick="toggleRadio('https://icast.connectmedia.hu/4748/mr7.mp3', this, 'Dankó Rádió')">
+            <button class="station-btn" onclick="window.toggleRadio('https://icast.connectmedia.hu/4748/mr7.mp3', this, 'Dankó Rádió')">
                 <span class="icon">🦄</span>
                 <span>Dankó</span>
             </button>
-            <button class="station-btn" onclick="toggleRadio('https://stream.klubradio.hu:8443/bpstream', this, 'Klubrádió')">
+            <button class="station-btn" onclick="window.toggleRadio('https://stream.klubradio.hu:8443/bpstream', this, 'Klubrádió')">
                 <span class="icon">🔥</span>
                 <span>Klubrádió</span>
             </button>
-            <button class="station-btn" onclick="toggleRadio('https://s01.diazol.hu:10052/spweb1.mp3', this, 'Spirit FM')">
+            <button class="station-btn" onclick="window.toggleRadio('https://s01.diazol.hu:10052/spweb1.mp3', this, 'Spirit FM')">
                 <span class="icon">☕️</span>
                 <span>Spirit</span>
             </button>
-            <button class="station-btn video-btn" onclick="openVideo()">
+            <button class="station-btn video-btn" onclick="window.openVideo()">
                 <span class="icon">📺</span>
                 <span>ATV Live</span>
             </button>
@@ -251,122 +220,167 @@
         </div>
     </div>
 
-    <div id="video-modal" style="display: none;">
+    <div id="video-modal">
         <div class="video-box">
-            
-            <div id="video-cover" onclick="playVideoWithSound()">
+            <div id="video-cover" onclick="window.playVideoWithSound()">
                 <div class="huge-play-btn">▶</div>
                 <div class="tap-text">Tap to Watch Live</div>
             </div>
-
             <div id="yt-player-container"></div>
-            
         </div>
-        <button id="close-video-btn" onclick="closeVideo()">Close Video</button>
+        <button id="close-video-btn" onclick="window.closeVideo()">Close Video</button>
     </div>
 
     <script>
-        // --- 1. RÁDIÓ ÉS ALKALMAZÁS LOGIKA (FONTOS: EZT ELŐRE VETTÜK) ---
-        
-        const appVersion = "1.7"; 
-        const YOUTUBE_ID = "YXAxiXEZM8Q"; 
-        
-        window.audioPlayer = new Audio();
-        window.audioPlayer.preload = "auto";
-        let isPlaying = false;      
-        let currentBtn = null;      
-        let retryCount = 0;         
-        let isVideoOpen = false; 
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log("App Started - iOS Modern Mode");
 
-        const statusText = document.getElementById('status-text');
-        const volumeSlider = document.getElementById('volume-slider');
-        const buttons = document.querySelectorAll('.station-btn');
-        const videoModal = document.getElementById('video-modal');
-        const ytContainer = document.getElementById('yt-player-container');
-        const videoCover = document.getElementById('video-cover');
+            // --- 1. ÓRA LOGIKA (Robust) ---
+            const dateDisplay = document.getElementById('date-display');
+            const timeDisplay = document.getElementById('time-display');
 
-        // --- Video Logic ---
-        function openVideo() {
-            stopAll(true);
-            statusText.innerText = "TV Ready...";
-            isVideoOpen = true; 
-            videoModal.style.display = 'flex';
-            videoCover.style.display = 'flex';
-            ytContainer.innerHTML = "";
-        }
+            const clockUpdater = () => {
+                const now = new Date();
+                
+                // Modern dátum formázás (Intl API)
+                const dateString = new Intl.DateTimeFormat('hu-HU', {
+                    month: 'long',
+                    day: 'numeric',
+                    weekday: 'long'
+                }).format(now);
 
-        function playVideoWithSound() {
-            videoCover.style.display = 'none';
-            statusText.innerText = "Watching TV...";
-            ytContainer.innerHTML = `<iframe 
-                src="https://www.youtube.com/embed/${YOUTUBE_ID}?autoplay=1&playsinline=1" 
-                title="YouTube video player" 
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                allowfullscreen>
-            </iframe>`;
-        }
+                // Modern idő formázás
+                const timeString = new Intl.DateTimeFormat('hu-HU', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false
+                }).format(now);
 
-        function closeVideo() {
-            ytContainer.innerHTML = "";
-            videoModal.style.display = 'none';
-            statusText.innerText = "Stopped";
-            isVideoOpen = false; 
-        }
+                if(dateDisplay) dateDisplay.textContent = dateString;
+                if(timeDisplay) timeDisplay.textContent = timeString;
+            };
 
-        // --- Audio Logic ---
-        function toggleRadio(url, btnElement, name) {
-            if (currentBtn === btnElement && isPlaying) {
-                stopAll();
-            } else {
-                playStream(url, btnElement, name);
-            }
-        }
+            // Indítás
+            clockUpdater();
+            setInterval(clockUpdater, 1000);
 
-        async function playStream(url, btnElement, name) {
-            stopAll(false); 
-            isPlaying = true;
-            currentBtn = btnElement;
+
+            // --- 2. RÁDIÓ LOGIKA (Global Binding) ---
             
-            buttons.forEach(b => b.classList.remove('playing'));
-            btnElement.classList.add('playing');
-            statusText.innerText = `Connecting...`;
-
-            window.audioPlayer.src = url;
-            window.audioPlayer.volume = volumeSlider.value;
+            const YOUTUBE_ID = "YXAxiXEZM8Q"; 
+            const audioPlayer = new Audio();
+            audioPlayer.preload = "none"; // Ne töltsön be magától, spóroljon nettel
             
-            try {
-                await window.audioPlayer.play();
-                setupMediaSession(name); 
-            } catch (error) {
-                console.log(error);
-                statusText.innerText = "Tap to Retry";
+            let isPlaying = false;      
+            let currentBtn = null;
+            
+            const statusText = document.getElementById('status-text');
+            const volumeSlider = document.getElementById('volume-slider');
+            const videoModal = document.getElementById('video-modal');
+            const ytContainer = document.getElementById('yt-player-container');
+            const videoCover = document.getElementById('video-cover');
+            const buttons = document.querySelectorAll('.station-btn');
+
+            // --- Segédfüggvények ---
+            
+            const stopAll = (updateUI = true) => {
                 isPlaying = false;
-            }
-        }
+                audioPlayer.pause();
+                if (updateUI) {
+                    audioPlayer.removeAttribute('src'); 
+                    buttons.forEach(b => b.classList.remove('playing'));
+                    statusText.innerText = "Stopped";
+                    currentBtn = null;
+                }
+            };
 
-        function stopAll(updateUI = true) {
-            isPlaying = false;
-            window.audioPlayer.pause();
-            if (updateUI) {
-                window.audioPlayer.removeAttribute('src'); 
+            const setupMediaSession = (name) => {
+                if ('mediaSession' in navigator) {
+                    navigator.mediaSession.metadata = new MediaMetadata({
+                        title: name,
+                        artist: "Live Radio",
+                        artwork: [{ src: 'https://img.icons8.com/dusk/512/radio-tower.png', sizes: '512x512', type: 'image/png' }]
+                    });
+                    navigator.mediaSession.setActionHandler('play', () => { isPlaying = true; audioPlayer.play(); });
+                    navigator.mediaSession.setActionHandler('pause', () => stopAll());
+                }
+            };
+
+            // --- Globális Függvények (hogy az onclick lássa őket) ---
+            
+            window.toggleRadio = async (url, btnElement, name) => {
+                // Ha ugyanarra kattintunk és szól -> STOP
+                if (currentBtn === btnElement && isPlaying) {
+                    stopAll();
+                    return;
+                }
+
+                // Új indítása
+                stopAll(false); // Leállítjuk a régit, de nem reseteljük a UI-t teljesen
+                
+                isPlaying = true;
+                currentBtn = btnElement;
+                
+                // UI frissítés
                 buttons.forEach(b => b.classList.remove('playing'));
+                btnElement.classList.add('playing');
+                statusText.innerText = "Connecting...";
+
+                audioPlayer.src = url;
+                audioPlayer.volume = volumeSlider.value;
+                
+                try {
+                    await audioPlayer.play();
+                    statusText.innerText = `Playing: ${name}`;
+                    setupMediaSession(name);
+                } catch (err) {
+                    console.error("Audio Error:", err);
+                    statusText.innerText = "Error (Tap again)";
+                    isPlaying = false;
+                    btnElement.classList.remove('playing');
+                }
+            };
+
+            window.openVideo = () => {
+                stopAll(true);
+                statusText.innerText = "TV Ready...";
+                videoModal.style.display = 'flex';
+                videoCover.style.display = 'flex';
+                ytContainer.innerHTML = "";
+            };
+
+            window.playVideoWithSound = () => {
+                videoCover.style.display = 'none';
+                statusText.innerText = "Watching TV...";
+                ytContainer.innerHTML = `<iframe 
+                    src="https://www.youtube.com/embed/${YOUTUBE_ID}?autoplay=1&playsinline=1" 
+                    title="YouTube video player" 
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                    allowfullscreen>
+                </iframe>`;
+            };
+
+            window.closeVideo = () => {
+                ytContainer.innerHTML = "";
+                videoModal.style.display = 'none';
                 statusText.innerText = "Stopped";
-                currentBtn = null;
-            }
-        }
+            };
 
-        // --- Events ---
-        window.audioPlayer.addEventListener('ended', () => {
-            if (isPlaying) setTimeout(() => window.audioPlayer.play(), 1000);
-        });
+            // --- Event Listeners ---
+            
+            volumeSlider.addEventListener('input', (e) => {
+                audioPlayer.volume = e.target.value;
+            });
 
-        window.audioPlayer.addEventListener('pause', () => {
-            if (isPlaying && !window.audioPlayer.ended) {
-                setTimeout(() => { if (isPlaying) window.audioPlayer.play(); }, 500);
-            }
-        });
+            audioPlayer.addEventListener('error', (e) => {
+                console.log("Stream hiba", e);
+                if(isPlaying) {
+                    statusText.innerText = "Connection Failed";
+                    stopAll();
+                }
+            });
 
-        window.audioPlayer.addEventListener('error', () => {
-            if (isPlaying && retryCount < 5) {
-                retryCount++;
-                statusText.innerText = `Retrying (${retryCount}).
+        }); // DOMContentLoaded vége
+    </script>
+</body>
+</html>
