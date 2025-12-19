@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <link rel="manifest" href="manifest.json">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Radio">
+
+    <link rel="apple-touch-icon" href="https://img.icons8.com/dusk/512/radio-tower.png">
+
+    <title>iPad Radio</title>
+
+    <style>
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        :root {
+            --ios-blur: 30px;
+            --ios-bg: rgba(28, 28, 30, 0.75);
+            --accent-color: #0A84FF;
+            --text-primary: #ffffff;
+            --text-secondary: #8e8e93;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0; padding: 0;
+            
+            /* iPhone 6 / iOS 12 Fix */
+            height: 100vh;  
+            height: 100dvh; 
+
+            width: 100vw;
+            background: linear-gradient(160deg, #1c1c1e 0%, #000000 100%);
+            color: var(--text-primary);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            overflow: hidden;
+            padding-top: env(safe-area-inset-top);
+            padding-bottom: env(safe-area-inset-bottom);
+            padding-left: env(safe-area-inset-left);
+            padding-right: env(safe-area-inset-right);
+            position: relative; /* Fontos az abszolút pozicionált órához */
+        }
+
+        /* --- ÚJ DÁTUM ÉS IDŐ STÍLUS --- */
+        #clock-wrapper {
+            position: absolute;
+            top: env(safe-area-inset-top, 20px); /* A "notch" figyelembe vétele */
+            width: 100%;
+            text-align: center;
+            z-index: 5;
+            padding-top: 10px;
+            pointer-events: none; /* Átkattintható legyen, ne zavarja a gombokat */
+        }
+
+        #date-display {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+            text-transform: capitalize; /* Nagy kezdőbetű */
+            margin-bottom: 2px;
+            letter-spacing: 0.5px;
+        }
+
+        #time-display {
+            font-size: 3.5rem;
+            font-weight: 200; /* Vékony, elegáns betű (iOS stílus) */
+            color: var(--text-primary);
+            letter-spacing: -1px;
+            line-height: 1;
+        }
+
+        .player-container {
+            width: 90%; max-width: 500px;
+            background: var(--ios-bg);
+            backdrop-filter: blur(var(--ios-blur));
+            -webkit-backdrop-filter: blur(var(--ios-blur));
+            border-radius: 32px;
+            padding: 40px 30px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+            z-index: 10;
+        }
+
+        h1 { margin: 0 0 10px 0; font-size: 2rem; letter-spacing: -0.5px; }
+
+        #status-text {
+            color: var(--text-secondary); font-size: 1rem; margin-bottom: 35px; height: 24px; font-weight: 500;
+        }
+
+        /* STATION GRID */
+        .station-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 30px;
+        }
+
+        .station-btn {
+            background: rgba(255, 255, 255, 0.08);
+            border: none; color: white; padding: 25px 5px; border-radius: 22px;
+            font-size: 0.9rem; font-weight: 600; cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.25, 1, 0.5, 1);
+            display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; width: 100%;
+        }
+
+        .station-btn:active { transform: scale(0.92); background: rgba(255, 255, 255, 0.15); }
+
+        .station-btn.playing {
+            background: var(--accent-color);
+            box-shadow: 0 8px 25px rgba(10, 132, 255, 0.5);
+        }
+        
+        .video-btn {
+            background: rgba(255, 59, 48, 0.15); 
+            color: #ff453a;
+        }
+        .video-btn:active { background: rgba(255, 59, 48, 0.3); }
+
+        .icon { font-size: 2rem; }
+
+        .volume-container {
+            display: flex; align-items: center; justify-content: space-between;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 15px 20px; border-radius: 20px; margin-top: 15px;
+        }
+        
+        input[type=range] { -webkit-appearance: none; width: 100%; margin: 0 15px; background: transparent; }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 6px; background: rgba(255,255,255,0.2); border-radius: 3px; }
+        input[type=range]::-webkit-slider-thumb { height: 26px; width: 26px; border-radius: 50%; background: #fff; -webkit-appearance: none; margin-top: -10px; box-shadow: 0 2px 6px rgba(0,0,0,0.4); }
+
+        @media only screen and (max-width: 600px) {
+            .volume-container { display: none; }
+            #status-text::after { content: "\A(Use side buttons for volume)"; white-space: pre; font-size: 0.8rem; opacity: 0.6; }
+            
+            /* Mobilon kicsit feljebb vesszük a konténert, hogy elférjen az óra alatt */
+            .player-container { margin-top: 40px; padding-top: 30px; padding-bottom: 30px; }
+            #time-display { font-size: 2.8rem; }
+        }
+        
+        /* --- VIDEO MODAL --- */
+        #video-modal {
+            display: none; 
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 999;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(10px);
+        }
+        
+        .video-box {
+            width: 95%;
+            max-width: 1000px;
+            position: relative;
+            padding-bottom: 53.4%; /* 16:9 Ratio */
+            height: 0; 
+            background: black;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 0 50px rgba(255, 0, 0, 0.2);
+        }
+        
+        .video-box iframe {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            border: none;
+            z-index: 1; /* Behind cover initially */
+        }
+        
+        /* THE CUSTOM "HUGE" PLAY BUTTON OVERLAY */
+        #video-cover {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: black;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            z-index: 10; /* On top of iframe */
+            cursor: pointer;
+        }
+        
+        .huge-play-btn {
+            font-size: 80px;
+            color: #ff0000;
+            background: white;
+            width: 100px; height: 100px;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            padding-left: 10px; /* Center the triangle visually */
+            box-shadow: 0 0 30px rgba(255,0,0,0.5);
+            transition: transform 0.2s;
+        }
+        
+        #video-cover:active .huge-play-btn { transform: scale(0.9); }
+        
+        .tap-text {
+            color: white; font-weight: bold; margin-top: 15px; font-size: 1.2rem;
+            text-transform: uppercase; letter-spacing: 1px;
+        }
+        
+        #close-video-btn {
+            margin-top: 30px;
+            background: #333;
+            color: white;
+            border: 1px solid #555;
+            padding: 15px 40px;
+            border-radius: 30px;
+            font-size: 1.1rem;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="clock-wrapper">
+        <div id="date-display">...</div>
+        <div id="time-display">...</div>
+    </div>
+
+    <div class="player-container">
+        <h1>Radio</h1>
+        <div id="status-text">Tap to play</div>
+
+        <div class="station-grid">
+            <button class="station-btn" onclick="toggleRadio('https://icast.connectmedia.hu/4748/mr7.mp3', this, 'Dankó Rádió')">
+                <span class="icon">🦄</span>
+                <span>Dankó</span>
+            </button>
+            <button class="station-btn" onclick="toggleRadio('https://stream.klubradio.hu:8443/bpstream', this, 'Klubrádió')">
+                <span class="icon">🔥</span>
+                <span>Klubrádió</span>
+            </button>
+            <button class="station-btn" onclick="toggleRadio('https://s01.diazol.hu:10052/spweb1.mp3', this, 'Spirit FM')">
+                <span class="icon">☕️</span>
+                <span>Spirit</span>
+            </button>
+            <button class="station-btn video-btn" onclick="openVideo()">
+                <span class="icon">📺</span>
+                <span>ATV Live</span>
+            </button>
+        </div>
+
+        <div class="volume-container">
+            <span>🔈</span>
+            <input type="range" id="volume-slider" min="0" max="1" step="0.01" value="0.8">
+            <span>🔊</span>
+        </div>
+    </div>
+
+    <div id="video-modal" style="display: none;">
+        <div class="video-box">
+            
+            <div id="video-cover" onclick="playVideoWithSound()">
+                <div class="huge-play-btn">▶</div>
+                <div class="tap-text">Tap to Watch Live</div>
+            </div>
+
+            <div id="yt-player-container"></div>
+            
+        </div>
+        <button id="close-video-btn" onclick="closeVideo()">Close Video</button>
+    </div>
+
+    <script>
+        // --- CLOCK LOGIC (ÚJ) ---
+        function updateClock() {
+            const now = new Date();
+
+            // Dátum: "december 19., péntek"
+            const dateOptions = { month: 'long', day: 'numeric', weekday: 'long' };
+            const dateString = now.toLocaleDateString('hu-HU', dateOptions);
+            
+            // Idő: "20:04"
+            const timeOptions = { hour: '2-digit', minute: '2-digit', hour12: false };
+            const timeString = now.toLocaleTimeString('hu-HU', timeOptions);
+
+            document.getElementById('date-display').textContent = dateString;
+            document.getElementById('time-display').textContent = timeString;
+        }
+        
+        // Óra indítása
+        updateClock();
+        setInterval(updateClock, 1000);
+
+        // --- RADIO LOGIC (EREDETI) ---
+        
+        // --- CONFIG & STATE ---
+        const appVersion = "1.6"; 
+        const YOUTUBE_ID = "YXAxiXEZM8Q"; 
+        
+        // Global State
+        window.audioPlayer = new Audio();
+        window.audioPlayer.preload = "auto";
+        let isPlaying = false;      
+        let currentBtn = null;      
+        let retryCount = 0;         
+        let isVideoOpen = false; 
+
+        // Elements
+        const statusText = document.getElementById('status-text');
+        const volumeSlider = document.getElementById('volume-slider');
+        const buttons = document.querySelectorAll('.station-btn
