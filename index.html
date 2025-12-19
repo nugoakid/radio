@@ -29,10 +29,9 @@
             font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", Roboto, Helvetica, Arial, sans-serif;
             margin: 0; padding: 0;
             
-            /* --- IPHONE 6 COMPATIBILITY FIX --- */
+            /* iPhone 6 / iOS 12 Fix */
             height: 100vh;  
             height: 100dvh; 
-            /* ---------------------------------- */
 
             width: 100vw;
             background: linear-gradient(160deg, #1c1c1e 0%, #000000 100%);
@@ -56,7 +55,7 @@
             text-align: center;
             border: 1px solid rgba(255, 255, 255, 0.1);
             position: relative;
-            z-index: 1;
+            z-index: 10; /* Higher Z-Index to ensure clickable */
         }
 
         h1 { margin: 0 0 10px 0; font-size: 2rem; letter-spacing: -0.5px; }
@@ -108,41 +107,42 @@
             #status-text::after { content: "\A(Use side buttons for volume)"; white-space: pre; font-size: 0.8rem; opacity: 0.6; }
         }
         
-        /* --- VIDEO MODAL UPDATED (BIGGER) --- */
+        /* --- VIDEO MODAL (SAFETY & SIZE FIX) --- */
         #video-modal {
             display: none; 
             position: fixed;
             top: 0; left: 0; width: 100vw; height: 100vh;
             background: rgba(0, 0, 0, 0.95);
-            z-index: 999;
+            z-index: 999; /* On top when visible */
             flex-direction: column;
             align-items: center;
             justify-content: center;
             backdrop-filter: blur(10px);
         }
         
+        /* THE PADDING HACK: Guarantees 16:9 on ALL devices (even iPhone 6) */
         .video-box {
-            /* Takes up 95% of screen width */
             width: 95%;
-            max-width: 1000px; 
-            /* Forces a 16:9 shape */
-            aspect-ratio: 16/9;
+            max-width: 1000px;
+            position: relative;
+            padding-bottom: 53.4%; /* This forces 16:9 ratio based on width */
+            height: 0; 
             background: black;
             border-radius: 16px;
             overflow: hidden;
             box-shadow: 0 0 50px rgba(255, 0, 0, 0.2);
         }
-
-        /* THIS IS THE FIX: Force the container to fill the box */
-        #yt-player-container {
-            width: 100%;
-            height: 100%;
+        
+        /* Force iframe to fill the padded box */
+        .video-box iframe {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            border: none;
         }
         
-        iframe { width: 100%; height: 100%; border: none; }
-        
         #close-video-btn {
-            margin-top: 25px;
+            margin-top: 30px;
             background: #333;
             color: white;
             border: 1px solid #555;
@@ -154,13 +154,6 @@
     </style>
 </head>
 <body>
-
-    <div id="video-modal">
-        <div class="video-box">
-            <div id="yt-player-container"></div>
-        </div>
-        <button id="close-video-btn" onclick="closeVideo()">Close Video</button>
-    </div>
 
     <div class="player-container">
         <h1>Radio</h1>
@@ -192,12 +185,34 @@
         </div>
     </div>
 
-    <script>
-        // ==========================================
-        // PART 1: AUTO-UPDATE (FIXED FOR VIDEO)
-        // ==========================================
-        const appVersion = "1.3"; // Bumped version for new CSS
+    <div id="video-modal" style="display: none;">
+        <div class="video-box">
+            <div id="yt-player-container"></div>
+        </div>
+        <button id="close-video-btn" onclick="closeVideo()">Close Video</button>
+    </div>
 
+    <script>
+        // --- CONFIG & STATE ---
+        const appVersion = "1.4"; 
+        const YOUTUBE_ID = "YXAxiXEZM8Q"; 
+        
+        // Setup Global State
+        window.audioPlayer = new Audio();
+        window.audioPlayer.preload = "auto";
+        let isPlaying = false;      
+        let currentBtn = null;      
+        let retryCount = 0;         
+        let isVideoOpen = false; 
+
+        // Get Elements (Safe Checks)
+        const statusText = document.getElementById('status-text');
+        const volumeSlider = document.getElementById('volume-slider');
+        const buttons = document.querySelectorAll('.station-btn');
+        const videoModal = document.getElementById('video-modal');
+        const ytContainer = document.getElementById('yt-player-container');
+
+        // --- AUTO UPDATE SYSTEM ---
         setInterval(checkForUpdate, 60000);
         document.addEventListener("visibilitychange", () => {
             if (document.visibilityState === 'visible') checkForUpdate();
@@ -218,32 +233,14 @@
             } catch (error) {}
         }
 
-        // ==========================================
-        // PART 2: AUDIO & VIDEO LOGIC
-        // ==========================================
-        
-        window.audioPlayer = new Audio();
-        window.audioPlayer.preload = "auto";
-        
-        let isPlaying = false;      
-        let currentBtn = null;      
-        let retryCount = 0;         
-        let isVideoOpen = false; 
-
-        const statusText = document.getElementById('status-text');
-        const volumeSlider = document.getElementById('volume-slider');
-        const buttons = document.querySelectorAll('.station-btn');
-        
-        const videoModal = document.getElementById('video-modal');
-        const ytContainer = document.getElementById('yt-player-container');
-        const YOUTUBE_ID = "YXAxiXEZM8Q"; 
-
+        // --- VIDEO LOGIC ---
         function openVideo() {
             stopAll(true);
             statusText.innerText = "Watching TV...";
             isVideoOpen = true; 
             
             videoModal.style.display = 'flex';
+            // Using Padding Hack, we put the iframe directly in the container
             ytContainer.innerHTML = `<iframe src="https://www.youtube.com/embed/${YOUTUBE_ID}?autoplay=1&playsinline=1" allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
         }
 
@@ -254,8 +251,51 @@
             isVideoOpen = false; 
         }
 
-        // --- AUDIO EVENT LISTENERS ---
+        // --- AUDIO CONTROLS ---
+        function toggleRadio(url, btnElement, name) {
+            if (currentBtn === btnElement && isPlaying) {
+                stopAll();
+            } else {
+                playStream(url, btnElement, name);
+            }
+        }
 
+        async function playStream(url, btnElement, name) {
+            stopAll(false); 
+            isPlaying = true;
+            currentBtn = btnElement;
+            
+            // UI
+            buttons.forEach(b => b.classList.remove('playing'));
+            btnElement.classList.add('playing');
+            statusText.innerText = `Connecting...`;
+
+            // Audio
+            window.audioPlayer.src = url;
+            window.audioPlayer.volume = volumeSlider.value;
+            
+            try {
+                await window.audioPlayer.play();
+                setupMediaSession(name); 
+            } catch (error) {
+                console.log(error);
+                statusText.innerText = "Tap to Retry";
+                isPlaying = false;
+            }
+        }
+
+        function stopAll(updateUI = true) {
+            isPlaying = false;
+            window.audioPlayer.pause();
+            if (updateUI) {
+                window.audioPlayer.removeAttribute('src'); 
+                buttons.forEach(b => b.classList.remove('playing'));
+                statusText.innerText = "Stopped";
+                currentBtn = null;
+            }
+        }
+
+        // --- EVENTS ---
         window.audioPlayer.addEventListener('ended', () => {
             if (isPlaying) setTimeout(() => window.audioPlayer.play(), 1000);
         });
@@ -266,7 +306,7 @@
             }
         });
 
-        window.audioPlayer.addEventListener('error', (e) => {
+        window.audioPlayer.addEventListener('error', () => {
             if (isPlaying && retryCount < 5) {
                 retryCount++;
                 statusText.innerText = `Retrying (${retryCount})...`;
@@ -290,50 +330,19 @@
             window.audioPlayer.volume = e.target.value;
         });
 
-        function toggleRadio(url, btnElement, name) {
-            if (currentBtn === btnElement && isPlaying) {
-                stopAll();
-            } else {
-                playStream(url, btnElement, name);
-            }
-        }
-
-        async function playStream(url, btnElement, name) {
-            stopAll(false); 
-            isPlaying = true;
-            currentBtn = btnElement;
-            buttons.forEach(b => b.classList.remove('playing'));
-            btnElement.classList.add('playing');
-            statusText.innerText = `Connecting...`;
-
-            window.audioPlayer.src = url;
-            window.audioPlayer.volume = volumeSlider.value;
-            
-            try {
-                await window.audioPlayer.play();
-                setupMediaSession(name); 
-            } catch (error) {
-                statusText.innerText = "Tap to Retry";
-                isPlaying = false;
-            }
-        }
-
-        function stopAll(updateUI = true) {
-            isPlaying = false;
-            window.audioPlayer.pause();
-            if (updateUI) {
-                window.audioPlayer.removeAttribute('src'); 
-                buttons.forEach(b => b.classList.remove('playing'));
-                statusText.innerText = "Stopped";
-                currentBtn = null;
-            }
-        }
-
         function setupMediaSession(name) {
             if ('mediaSession' in navigator) {
-                navigator.mediaSession.metadata = new MediaMetadata({
-                    title: name,
-                    artist: "Live Radio",
-                    artwork: [{ src: 'https://img.icons8.com/dusk/512/radio-tower.png', sizes: '512x512', type: 'image/png' }]
-                });
-                navigator.mediaSession.setActionHandler('play', () => { isPlaying = true; window.audioPlayer.play(); });
+                try {
+                    navigator.mediaSession.metadata = new MediaMetadata({
+                        title: name,
+                        artist: "Live Radio",
+                        artwork: [{ src: 'https://img.icons8.com/dusk/512/radio-tower.png', sizes: '512x512', type: 'image/png' }]
+                    });
+                    navigator.mediaSession.setActionHandler('play', () => { isPlaying = true; window.audioPlayer.play(); });
+                    navigator.mediaSession.setActionHandler('pause', () => stopAll());
+                } catch(e) {}
+            }
+        }
+    </script>
+</body>
+</html>
