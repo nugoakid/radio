@@ -122,14 +122,21 @@
         }
         
         .video-box {
-            /* FIXED: Much bigger size */
+            /* Takes up 95% of screen width */
             width: 95%;
             max-width: 1000px; 
+            /* Forces a 16:9 shape */
             aspect-ratio: 16/9;
             background: black;
             border-radius: 16px;
             overflow: hidden;
             box-shadow: 0 0 50px rgba(255, 0, 0, 0.2);
+        }
+
+        /* THIS IS THE FIX: Force the container to fill the box */
+        #yt-player-container {
+            width: 100%;
+            height: 100%;
         }
         
         iframe { width: 100%; height: 100%; border: none; }
@@ -189,7 +196,7 @@
         // ==========================================
         // PART 1: AUTO-UPDATE (FIXED FOR VIDEO)
         // ==========================================
-        const appVersion = "1.2"; 
+        const appVersion = "1.3"; // Bumped version for new CSS
 
         setInterval(checkForUpdate, 60000);
         document.addEventListener("visibilitychange", () => {
@@ -203,7 +210,6 @@
                 const data = await response.json();
                 
                 if (data.version && data.version !== appVersion) {
-                    // FIX: Check if video is playing using our new 'isVideoOpen' flag
                     // Only reload if audio is paused AND video is NOT open
                     if (window.audioPlayer.paused && !isVideoOpen) {
                         window.location.reload(true);
@@ -222,7 +228,7 @@
         let isPlaying = false;      
         let currentBtn = null;      
         let retryCount = 0;         
-        let isVideoOpen = false; // New flag to track TV state
+        let isVideoOpen = false; 
 
         const statusText = document.getElementById('status-text');
         const volumeSlider = document.getElementById('volume-slider');
@@ -235,7 +241,7 @@
         function openVideo() {
             stopAll(true);
             statusText.innerText = "Watching TV...";
-            isVideoOpen = true; // Tell the updater we are busy watching TV
+            isVideoOpen = true; 
             
             videoModal.style.display = 'flex';
             ytContainer.innerHTML = `<iframe src="https://www.youtube.com/embed/${YOUTUBE_ID}?autoplay=1&playsinline=1" allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
@@ -245,7 +251,7 @@
             ytContainer.innerHTML = "";
             videoModal.style.display = 'none';
             statusText.innerText = "Stopped";
-            isVideoOpen = false; // TV is done, updater can resume
+            isVideoOpen = false; 
         }
 
         // --- AUDIO EVENT LISTENERS ---
@@ -331,10 +337,3 @@
                     artwork: [{ src: 'https://img.icons8.com/dusk/512/radio-tower.png', sizes: '512x512', type: 'image/png' }]
                 });
                 navigator.mediaSession.setActionHandler('play', () => { isPlaying = true; window.audioPlayer.play(); });
-                navigator.mediaSession.setActionHandler('pause', () => stopAll());
-            }
-        }
-    </script>
-    
-</body>
-</html>
