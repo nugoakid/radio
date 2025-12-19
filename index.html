@@ -28,51 +28,51 @@
         body {
             font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", Roboto, Helvetica, Arial, sans-serif;
             margin: 0; padding: 0;
-            
-            /* iPhone 6 / iOS 12 Fix */
             height: 100vh;  
             height: 100dvh; 
-
             width: 100vw;
             background: linear-gradient(160deg, #1c1c1e 0%, #000000 100%);
             color: var(--text-primary);
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center;
             overflow: hidden;
-            padding-top: env(safe-area-inset-top);
-            padding-bottom: env(safe-area-inset-bottom);
-            padding-left: env(safe-area-inset-left);
-            padding-right: env(safe-area-inset-right);
-            position: relative; /* Fontos az abszolút pozicionált órához */
+            position: relative;
         }
 
-        /* --- ÚJ DÁTUM ÉS IDŐ STÍLUS --- */
+        /* --- ÓRA STÍLUS (JAVÍTOTT) --- */
         #clock-wrapper {
             position: absolute;
-            top: env(safe-area-inset-top, 20px); /* A "notch" figyelembe vétele */
+            top: 20px; /* Fix távolság a tetejétől, hogy biztosan látsszon */
+            left: 0;
             width: 100%;
             text-align: center;
-            z-index: 5;
-            padding-top: 10px;
-            pointer-events: none; /* Átkattintható legyen, ne zavarja a gombokat */
+            z-index: 1; /* Alacsony rétegrend */
+            pointer-events: none; /* Átkattintható legyen, ne takarja ki a gombokat */
+            padding: 10px;
         }
 
         #date-display {
-            font-size: 1.1rem;
+            font-size: 1.2rem;
             color: var(--text-secondary);
             font-weight: 500;
-            text-transform: capitalize; /* Nagy kezdőbetű */
-            margin-bottom: 2px;
+            text-transform: capitalize;
+            margin-bottom: 5px;
             letter-spacing: 0.5px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5); /* Jobb olvashatóság */
         }
 
         #time-display {
-            font-size: 3.5rem;
-            font-weight: 200; /* Vékony, elegáns betű (iOS stílus) */
+            font-size: 4rem;
+            font-weight: 200;
             color: var(--text-primary);
             letter-spacing: -1px;
             line-height: 1;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
         }
 
+        /* --- LEJÁTSZÓ KONTÉNER --- */
         .player-container {
             width: 90%; max-width: 500px;
             background: var(--ios-bg);
@@ -84,7 +84,7 @@
             text-align: center;
             border: 1px solid rgba(255, 255, 255, 0.1);
             position: relative;
-            z-index: 10;
+            z-index: 100; /* Magas rétegrend, hogy a gombok működjenek! */
         }
 
         h1 { margin: 0 0 10px 0; font-size: 2rem; letter-spacing: -0.5px; }
@@ -104,6 +104,7 @@
             font-size: 0.9rem; font-weight: 600; cursor: pointer;
             transition: all 0.2s cubic-bezier(0.25, 1, 0.5, 1);
             display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; width: 100%;
+            z-index: 101; /* Biztos ami biztos */
         }
 
         .station-btn:active { transform: scale(0.92); background: rgba(255, 255, 255, 0.15); }
@@ -134,10 +135,9 @@
         @media only screen and (max-width: 600px) {
             .volume-container { display: none; }
             #status-text::after { content: "\A(Use side buttons for volume)"; white-space: pre; font-size: 0.8rem; opacity: 0.6; }
-            
-            /* Mobilon kicsit feljebb vesszük a konténert, hogy elférjen az óra alatt */
-            .player-container { margin-top: 40px; padding-top: 30px; padding-bottom: 30px; }
-            #time-display { font-size: 2.8rem; }
+            .player-container { margin-top: 60px; /* Helyet hagyunk az órának mobilon */ }
+            #time-display { font-size: 3rem; }
+            #date-display { font-size: 1rem; }
         }
         
         /* --- VIDEO MODAL --- */
@@ -157,7 +157,7 @@
             width: 95%;
             max-width: 1000px;
             position: relative;
-            padding-bottom: 53.4%; /* 16:9 Ratio */
+            padding-bottom: 53.4%; 
             height: 0; 
             background: black;
             border-radius: 16px;
@@ -170,17 +170,16 @@
             top: 0; left: 0;
             width: 100%; height: 100%;
             border: none;
-            z-index: 1; /* Behind cover initially */
+            z-index: 1; 
         }
         
-        /* THE CUSTOM "HUGE" PLAY BUTTON OVERLAY */
         #video-cover {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
             background: black;
             display: flex; flex-direction: column;
             align-items: center; justify-content: center;
-            z-index: 10; /* On top of iframe */
+            z-index: 10; 
             cursor: pointer;
         }
         
@@ -191,7 +190,7 @@
             width: 100px; height: 100px;
             border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
-            padding-left: 10px; /* Center the triangle visually */
+            padding-left: 10px; 
             box-shadow: 0 0 30px rgba(255,0,0,0.5);
             transition: transform 0.2s;
         }
@@ -267,33 +266,11 @@
     </div>
 
     <script>
-        // --- CLOCK LOGIC (ÚJ) ---
-        function updateClock() {
-            const now = new Date();
-
-            // Dátum: "december 19., péntek"
-            const dateOptions = { month: 'long', day: 'numeric', weekday: 'long' };
-            const dateString = now.toLocaleDateString('hu-HU', dateOptions);
-            
-            // Idő: "20:04"
-            const timeOptions = { hour: '2-digit', minute: '2-digit', hour12: false };
-            const timeString = now.toLocaleTimeString('hu-HU', timeOptions);
-
-            document.getElementById('date-display').textContent = dateString;
-            document.getElementById('time-display').textContent = timeString;
-        }
+        // --- 1. RÁDIÓ ÉS ALKALMAZÁS LOGIKA (FONTOS: EZT ELŐRE VETTÜK) ---
         
-        // Óra indítása
-        updateClock();
-        setInterval(updateClock, 1000);
-
-        // --- RADIO LOGIC (EREDETI) ---
-        
-        // --- CONFIG & STATE ---
-        const appVersion = "1.6"; 
+        const appVersion = "1.7"; 
         const YOUTUBE_ID = "YXAxiXEZM8Q"; 
         
-        // Global State
         window.audioPlayer = new Audio();
         window.audioPlayer.preload = "auto";
         let isPlaying = false;      
@@ -301,7 +278,95 @@
         let retryCount = 0;         
         let isVideoOpen = false; 
 
-        // Elements
         const statusText = document.getElementById('status-text');
         const volumeSlider = document.getElementById('volume-slider');
-        const buttons = document.querySelectorAll('.station-btn
+        const buttons = document.querySelectorAll('.station-btn');
+        const videoModal = document.getElementById('video-modal');
+        const ytContainer = document.getElementById('yt-player-container');
+        const videoCover = document.getElementById('video-cover');
+
+        // --- Video Logic ---
+        function openVideo() {
+            stopAll(true);
+            statusText.innerText = "TV Ready...";
+            isVideoOpen = true; 
+            videoModal.style.display = 'flex';
+            videoCover.style.display = 'flex';
+            ytContainer.innerHTML = "";
+        }
+
+        function playVideoWithSound() {
+            videoCover.style.display = 'none';
+            statusText.innerText = "Watching TV...";
+            ytContainer.innerHTML = `<iframe 
+                src="https://www.youtube.com/embed/${YOUTUBE_ID}?autoplay=1&playsinline=1" 
+                title="YouTube video player" 
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                allowfullscreen>
+            </iframe>`;
+        }
+
+        function closeVideo() {
+            ytContainer.innerHTML = "";
+            videoModal.style.display = 'none';
+            statusText.innerText = "Stopped";
+            isVideoOpen = false; 
+        }
+
+        // --- Audio Logic ---
+        function toggleRadio(url, btnElement, name) {
+            if (currentBtn === btnElement && isPlaying) {
+                stopAll();
+            } else {
+                playStream(url, btnElement, name);
+            }
+        }
+
+        async function playStream(url, btnElement, name) {
+            stopAll(false); 
+            isPlaying = true;
+            currentBtn = btnElement;
+            
+            buttons.forEach(b => b.classList.remove('playing'));
+            btnElement.classList.add('playing');
+            statusText.innerText = `Connecting...`;
+
+            window.audioPlayer.src = url;
+            window.audioPlayer.volume = volumeSlider.value;
+            
+            try {
+                await window.audioPlayer.play();
+                setupMediaSession(name); 
+            } catch (error) {
+                console.log(error);
+                statusText.innerText = "Tap to Retry";
+                isPlaying = false;
+            }
+        }
+
+        function stopAll(updateUI = true) {
+            isPlaying = false;
+            window.audioPlayer.pause();
+            if (updateUI) {
+                window.audioPlayer.removeAttribute('src'); 
+                buttons.forEach(b => b.classList.remove('playing'));
+                statusText.innerText = "Stopped";
+                currentBtn = null;
+            }
+        }
+
+        // --- Events ---
+        window.audioPlayer.addEventListener('ended', () => {
+            if (isPlaying) setTimeout(() => window.audioPlayer.play(), 1000);
+        });
+
+        window.audioPlayer.addEventListener('pause', () => {
+            if (isPlaying && !window.audioPlayer.ended) {
+                setTimeout(() => { if (isPlaying) window.audioPlayer.play(); }, 500);
+            }
+        });
+
+        window.audioPlayer.addEventListener('error', () => {
+            if (isPlaying && retryCount < 5) {
+                retryCount++;
+                statusText.innerText = `Retrying (${retryCount}).
